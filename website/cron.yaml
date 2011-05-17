@@ -1,0 +1,8 @@
+cron:
+- description: keep alive
+  url: /
+  schedule: every 2 minutes
+- description: process pages
+  url: /update_videos_I2bmxS2RAfVmt7C3DBeNHh75Ugqfc66xYFc5tT8JYrW53QDq8rYVGADK/
+  schedule: every 1 hours
+

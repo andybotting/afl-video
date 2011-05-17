@@ -1,0 +1,93 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}" xml:lang="{% firstof LANGUAGE_CODE 'en' %}" lang="{% firstof LANGUAGE_CODE 'en' %}">
+<head>
+	<title>{% block title %}{% endblock %} -- Unofficial AFL Video</title>
+
+  	<link rel="stylesheet" type="text/css" media="all" href="{{ MEDIA_URL }}css/style.css" />
+	{% block css %}
+	{% endblock %}
+
+	{% block preload_js %}
+	{% endblock %}
+
+	{% block extra-head %}{% endblock %}
+</head>
+
+<body>
+  <div id="header">
+    <div style="height: 60px;" id="staticheader">
+      <div class="logo">
+        <h1><a rel="home" href="/" title="Home Page"><span>AFL Video</span></a></h1>
+      </div>
+
+      <div id="container">
+        <div id="searchbox">
+          <form action="/search/" id="searchform" method="get" role="search" name="searchform">
+            <input value="Search" class="textform" name="s" id="s" type="text" />
+            <input class="submitsearch" value="" type="submit" />
+          </form>
+        </div>
+
+        <div id="navigation">
+          <ul>
+            <li><a title="" href="/subscribe/">Subscribe</a></li>
+            <li><a title="Contact" href="/contact/">Contact</a></li>
+            <li><a title="About" href="/about/">About</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div style="position: static;" id="floatheader">
+      <div id="menu">
+        <ul>
+          <li><a class="selected" title="Home" href="/home/">Home</a></li>
+          <li><a title="Latest Videos" href="/all/">Latest</a></li>
+          <li><a title="Teams" href="/teams/">Teams</a></li>
+          <li><a title="Match Replays" href="/matches/">Replays</a></li>
+          <li><a title="News" href="/news/">News</a></li>
+          <li><a title="Panel" href="/panel/">Panel</a></li>
+        </ul>
+      </div>
+    </div>
+
+  </div><!-- header -->
+
+  <div id="contenttop"></div>
+
+  <div id="content">
+
+		{% block content-header %}
+			{% if error %}<div class="error">{{ error }}</div>{% endif %}
+			{% if info %}<div class="info">{{ info }}</div>{% endif %}
+			{% if messages %}
+				{% for message in messages %}
+				<div class="info">{{ message }}</div>
+				{% endfor %}
+			{% endif %}
+		{% endblock %}
+
+		{% block content %}{% endblock %}
+
+  </div><!-- content -->
+
+  <div id="contentbottom"></div>
+
+  <div id="footer">
+    <div class="container">
+      <div class="logo">
+        <a rel="home" title="Home" href="/"><span>AFL Video</span></a>
+      </div>
+
+      <div class="copyright">Copyright &copy; 2011 
+        <a rel="home" title="AFL Video Home" href="/">Andy Boting</a>. <br />
+        All video content is provided by <a href="http://www.afl.com.au">AFL.com.au</a>. This web site is not affliated with the AFL in any way.
+        <br />
+      </div>
+    </div>
+  </div>
+
+	{% block js %}
+	{% endblock %}
+</body>
+</html>

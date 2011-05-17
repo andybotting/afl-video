@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}{{ match.get_title }}{% endblock %}
+
+{% block content %}
+	<a href="{{ match.videos.urls }}"><img src="/thumb/{{ match.get_thumb_name }}_178x100.png" width="178" height="100"><br />{{ match.get_title }}</a>
+	<p>{{ match.videos }}</p>
+{% for video in videos %}
+         <li>
+            <a href="/video/{{ video.pk }}"><img src="{{ video.thumbnail }}" width="178" height="100"><br />{{ video.name }}</a>
+            <!-- <p><a href="{{ video.urls.0 }}">Low 172k</a> <br /> <a href="{{ video.urls.1 }}">Medium 1Mb</a> <br /> <a href="{{ video.urls.2 }}">High 2Mb</a></p> -->
+            <!-- <p>{% for k,v in video.get_tags.items %}<a href="{{ request.get_path }}?{{ k }}={{ v }}">{{ k }}={{ v }}</a> {% endfor %}</p> -->
+            <p>{{ video.date }}</p>
+         </li>
+{% endfor %}
+
+
+
+	<p>{{ match.date }}</p>
+
+{% endblock %}
