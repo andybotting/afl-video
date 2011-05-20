@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<strings>
+    <string id="10000">AFL Video</string>
+    
+    <!--Categories-->
+    <string id="10001">Video Settings</string>
+    
+    <!--Settings-->
+    <string id="10002">High Quality</string>
+    
+</strings>

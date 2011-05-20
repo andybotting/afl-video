@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon
+  id="plugin.video.afl-video"
+  name="AFL Video"
+  version="0.1.0"
+  provider-name="Andy Botting">
+  <requires>
+    <import addon="xbmc.python" version="1.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource"
+             provides="video"
+             library="default.py">
+    <provides>video</provides>
+  </extension>
+  <extension 
+    point="xbmc.addon.metadata"
+    library="default.py">
+    <summary>AFL Video by Andy Botting</summary>
+    <description>Watch the latest AFL replays and post match press reports.</description>
+    <provides>video</provides>
+    <platform>all</platform>
+  </extension>
+</addon>

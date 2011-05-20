@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+	<!-- High Quality -->
+	<category label="10001">
+		<setting id="quality" type="enum" label="10002" values="Low (172k/s)|Medium (1Mb/s)|High (2Mb/s)" default="1" />
+	</category>
+</settings>
