@@ -30,31 +30,16 @@ FEEDS = [
 
 		#{ 'name': 'Club Video',	 'url': 'http://www.afl.com.au/ajax.aspx?feed=VideoSearch&videoTabId=616&videoSubTabId=621&mid=131673', 'tags': ['club'] },
 
-def check_url1(url):
-	req = urllib2.Request(url)
-	try:
-		resp = urllib2.urlopen(req)
-	except urllib2.URLError, e:
-		if e.code == 404:
-			return False
-	return True
-
-def check_url2(url):
-	code = 0
-	try:
-		conn = urllib2.urlopen(url)
-		code = conn.code
-		conn.close()
-	except urllib2.HTTPError, e:
-		code = e.getcode()
-	except DownloadError:
-		logging.exception("Download error for %s" % url)
-
-	return code
-
-
 
 def check_url(url):
+	code = 0
+	while code == 0:
+		code = http_test(url)
+		logging.debug("URL %s gave code: %d" % (url, code))
+		if code != 0:
+			return code;
+
+def http_test(url):
 	code = 0
 	try:
 		o = urlparse(url)
@@ -71,7 +56,6 @@ def check_url(url):
 	except:
 		logging.exception("Failed to test URL: %s" % url)
 
-	logging.debug("URL %s gave code: %d" % (url, code))
 	return code
 
 

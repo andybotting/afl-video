@@ -23,7 +23,7 @@ if __name__ == "__main__" :
 		# List index
 		index.make_list()
 	else:
-
+		# Picked a type
 		if params.has_key('type'):
 			if params['type'] == 'matches':
 				# List matches
@@ -37,5 +37,6 @@ if __name__ == "__main__" :
 				# List videos for categories
 				videos.make_list(params_str)
 
+		# Fallback to showing video items
 		else:
 			videos.make_list(params_str)

@@ -5,6 +5,7 @@
 # main imports
 import sys, os, re, urllib2, urllib
 import config
+import utils
 
 try:
 	import xbmc, xbmcgui, xbmcplugin
@@ -12,8 +13,8 @@ except ImportError:
 	pass 
 
 def make_list():
-	try:
 
+	try:
 		items = []
 
 		# Add the matches and teams lists

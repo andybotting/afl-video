@@ -21,7 +21,7 @@ class Match(models.Model):
 	def get_season(self):
 		season = ""
 		if self.type == 'premiership':
-			season = "AFL %d Premiership Season" % self.date.year
+			season = "AFL %d Season" % self.date.year
 		elif self.type == 'final':
 			season = "AFL %d Finals" % self.date.year
 		elif self.type == 'grandfinal':
@@ -73,6 +73,11 @@ class Video(models.Model):
 	thumbnail = models.URLField(verify_exists=True, max_length=256)
 	date = models.DateField()
 	tags = fields.ListField(models.CharField(max_length=16))
+
+	class Admin:
+		list_display   = ('name', 'thumbnail', 'date')
+		ordering       = ('-date',)
+		search_fields  = ('name',)
 
 	def __str__(self):
 		return self.name
