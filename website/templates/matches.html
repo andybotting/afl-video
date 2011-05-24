@@ -6,7 +6,7 @@
 		<ul id="clb">
 {% for match in matches %}
 			<li>
-				<a href="/match/{{ match.pk }}"><img src="/thumb/{{ match.get_thumb_name }}_178x100.png" width="178" height="100"><br />{{ match.get_title }}</a>
+				<a href="/match/{{ match.pk }}"><img src="/thumb/178x100/{{ match.get_thumb_name }}" width="178" height="100"><br />{{ match.get_title }}</a>
 				<p>{{ videos }}</p>
 				<p>{{ match.date }}</p>
 			</li>

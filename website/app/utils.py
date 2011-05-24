@@ -30,7 +30,7 @@ FEEDS = [
 
 		#{ 'name': 'Club Video',	 'url': 'http://www.afl.com.au/ajax.aspx?feed=VideoSearch&videoTabId=616&videoSubTabId=621&mid=131673', 'tags': ['club'] },
 
-def check_url(url):
+def check_url1(url):
 	req = urllib2.Request(url)
 	try:
 		resp = urllib2.urlopen(req)
@@ -39,41 +39,56 @@ def check_url(url):
 			return False
 	return True
 
-
-
-def check_url1(url):
-	o = urlparse(url)
+def check_url2(url):
+	code = 0
 	try:
-		conn = httplib.HTTPConnection(o.netloc)
+		conn = urllib2.urlopen(url)
+		code = conn.code
+		conn.close()
+	except urllib2.HTTPError, e:
+		code = e.getcode()
+	except DownloadError:
+		logging.exception("Download error for %s" % url)
+
+	return code
+
+
+
+def check_url(url):
+	code = 0
+	try:
+		o = urlparse(url)
+		conn = httplib.HTTPConnection(o.netloc, timeout=10)
 		conn.request("HEAD", o.path)
 		resp = conn.getresponse()
 
-		if (resp.status == 200):
-			return True
-
-		if (resp.status == 404):
-			return False
-
+		# 302 redirect
 		if (resp.status == 302):
-			if check_url(resp.getheader('location')):
-				return True
+			url = resp.getheader('location')
+			return check_url(url)
+		else:
+			code = resp.status
 	except:
 		logging.exception("Failed to test URL: %s" % url)
-		return False
+
+	logging.debug("URL %s gave code: %d" % (url, code))
+	return code
 
 
 def update_videos_job():
 	for feed in FEEDS:
-		for page in range(1,6):
+		for page in range(1,11):
 			
+			data = "%s_%s_%s" % (feed['tag'], feed['video_id'], page)
+
 			if on_production_server:
 				# Build our task url with secret key
-				data = "%s_%s_%s" % (feed['tag'], feed['video_id'], page)
 				url = "/process_page_%s/%s" % (settings.SECRET_URL_KEY, data)
 				logging.info("Adding %s to task queue" % data)
 				taskqueue.add(url=url, method="GET")
 			else:
 				# For debugging only
+				logging.info("Fetching page %s" % data)
 				process_page(feed['tag'], feed['video_id'], page)
 
 	# Club Video - needs work
@@ -141,10 +156,12 @@ def parse_page(data, type):
 		else:
 			video = models.Video()
 			
-		if not check_url(video_url):
+		code = check_url(video_url)
+		if code == 404:
 			logging.debug("Video %s is a 404! Deleting..." % video_url)
 			video.delete()
 		else:
+			logging.debug("Video %s is HTTP code: %d" % (video_url, code))
 			# Set the name
 			video.name = video_name
 	
@@ -154,7 +171,7 @@ def parse_page(data, type):
 	
 			# Test for low quality (172k stream)
 			video_low_qual = re.sub("1[mM][bB]{,1}.mp4", "172K.mp4", video_url)
-			if check_url(video_low_qual):
+			if check_url(video_low_qual) == 200:
 				logging.debug("Found low-res video for %s" % video.name)
 				video.urls.insert(static.QUAL_LOW, video_low_qual)
 			else:
@@ -165,7 +182,7 @@ def parse_page(data, type):
 	
 			# Test for high quality (2Mb stream)
 			video_high_qual = re.sub("1[mM][bB]{,1}.mp4", "2M.mp4", video_url)
-			if check_url(video_high_qual):
+			if check_url(video_high_qual) == 200:
 				logging.debug("Found high-res video for %s" % video.name)
 				video.urls.insert(static.QUAL_HIGH, video_high_qual)
 			else:
@@ -173,12 +190,12 @@ def parse_page(data, type):
 	
 			# Lets check to see if a higher res thumbnail is available
 			thumbnail_standard = item.img.get('src')
-			thumbnail_highres = video.thumbnail.replace('89x50.jpg', '326x184.jpg')
+			thumbnail_highres = thumbnail_standard.replace('89x50.jpg', '326x184.jpg')
 	
-			if check_url(thumbnail_highres):
+			if check_url(thumbnail_highres) == 200:
 				logging.debug("Found higher-res thumbnail for %s" % video.name)
 				video.thumbnail = thumbnail_highres
-			elif check_url(thumbnail_standard):
+			elif check_url(thumbnail_standard) == 200:
 				logging.debug("Found standard-res thumbnail for %s" % video.name)
 				video.thumbnail = thumbnail_standard
 			else:

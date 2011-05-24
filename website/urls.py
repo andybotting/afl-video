@@ -22,11 +22,16 @@ urlpatterns = patterns('',
 
 	# Pages
 	(r'^all/$', views.videos),
+
+	(r'^video/match/(?P<match_id>\d+)/$', views.videos_match),
 	(r'^video/(?P<video_id>\d+)/$', views.video),
 	(r'^video/$', views.videos),
+	(r'^videos/$', views.videos),
+
 	(r'^match/(?P<match_id>\d+)$', views.match),
 	(r'^matches/$', views.matches),
-	(r'^matches/(?P<team>\w+)/$', views.matches),
+	#(r'^matches/(?P<team>\w+)/$', views.matches),
+
 	(r'^teams/$', views.teams),
 	(r'^teams/(?P<team>\w+)/$', views.team),
 	(r'^news/$', views.videos_type, {'type':'news'}),
@@ -35,6 +40,6 @@ urlpatterns = patterns('',
 	#(r'^json/', views.json),
 	(r'^latest/feed/$', feeds.LatestVideoFeed()),
 
-	(r'^thumb/', views.get_thumb),
+	(r'^thumb/(?P<size>\w+)/', views.get_thumb),
 	('^$', 'django.views.generic.simple.direct_to_template', {'template': 'home.html'}),
 )

@@ -2,8 +2,8 @@ import os
 
 version = '0.1.0'
 
-#SERVER = "http://afl-video.appspot.com"
-SERVER = "http://localhost:8000"
+SERVER = "http://afl-video.appspot.com"
+#SERVER = "http://localhost:8000"
 
 VIDEOS_URL = SERVER + "/video/"
 MATCHES_URL = SERVER + '/matches/?output=json'

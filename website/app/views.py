@@ -16,7 +16,7 @@ from django.template import RequestContext
 from django.conf import settings
 
 from BeautifulSoup import BeautifulStoneSoup
-import simplejson
+import simplejson as json
 
 
 def update_videos_job(request):
@@ -59,7 +59,7 @@ def retag_videos_job(request):
 	return HttpResponse("OK\n")
 
 
-def get_thumb(request):
+def get_thumb(request, size):
 	if request.path.endswith('.png'):
 		filename = request.path[:-4] # strip extension
 		name = filename.split('/')[-1] # Get the url of the image
@@ -67,10 +67,10 @@ def get_thumb(request):
 		# replay_geel_haw.png
 		bits = name.split('_')
 
-		if len(bits) != 4:
+		if len(bits) != 3:
 			raise Http404
 		else:
-			img_data = thumb.get_or_generate_thumb(bits[0], bits[1], bits[2], bits[3])
+			img_data = thumb.get_or_generate_thumb(bits[0], bits[1], bits[2], size)
 
 		# Return tile
 		response = HttpResponse(img_data, mimetype='image/png')
@@ -98,13 +98,12 @@ def get_videos(request):
 
 
 def videos(request):
-
 	query = []
-	json = False
+	json_output = False
 
 	for k, v in request.GET.iteritems():
 		if (k == 'output') and (v == 'json'):
-			json = True
+			json_output = True
 		else:
 			qstring = "%s:%s" % (k, v)
 			query.append(qstring)
@@ -116,14 +115,14 @@ def videos(request):
 	else:
 		videos = models.Video.objects.all().order_by("-date")[:100]
 
-	if json:
+	if json_output:
 		# Build our JSON result
 		result = []
 		for video in videos:
 			result.append(video.json())
 
 		return HttpResponse(
-				simplejson.dumps(result), 
+				json.dumps(result), 
 				mimetype="application/json"
 			)
 	else:
@@ -152,6 +151,23 @@ def video(request, video_id):
 		)
 
 
+def videos_match(request, match_id):
+	
+	match = models.Match.objects.get(pk=match_id)
+	videos = models.Video.objects.filter(id__in=match.videos)
+	match.videos = videos
+
+	logging.debug("Found %d videos for match %s" % (len(match.videos), match)) 
+
+	result = []
+	for video in videos:
+		result.append(video.json())
+
+	return HttpResponse(
+			json.dumps(result), 
+			mimetype="application/json"
+		)
+
 def match(request, match_id):
 	match = models.Match.objects.get(pk=match_id)
 
@@ -167,7 +183,20 @@ def match(request, match_id):
 		)
 
 
-def matches(request, team=None):
+def matches(request):
+
+	query = []
+	json_output = False
+	team = None
+
+	# Test for JSON
+	for k, v in request.GET.iteritems():
+		if (k == 'output') and (v == 'json'):
+			json_output = True
+		if (k == 'team'):
+			team = v
+
+
 	if team:
 		logging.debug("Searching for matches for team: %s" % team)
 		matches = models.Match.objects.filter(team=team).order_by("-date")
@@ -175,16 +204,29 @@ def matches(request, team=None):
 		logging.debug("Searching for all matches")
 		matches = models.Match.objects.all().order_by("-date")
 
-	logging.debug("Found %d matches" % len(matches))
-	return render_to_response('matches.html', {
-				'matches': matches,
-			},
-			context_instance=RequestContext(request)
-		)
+
+	if json_output:
+		# Build our JSON result
+		result = []
+		for match in matches:
+			result.append(match.json())
+
+		return HttpResponse(
+				json.dumps(result), 
+				mimetype="application/json"
+			)
+	else:
+		# Return our web template
+		return render_to_response('matches.html', {
+					'matches': matches,
+				},
+				context_instance=RequestContext(request)
+			)
 
 
 def team(request, team_id):
 	pass
+
 
 
 def teams(request):

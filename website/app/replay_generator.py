@@ -116,7 +116,7 @@ def process_round_data(data):
 			if year < 2011 and round < 10 and not final:
 
 				video_url_med = "http://pd.streaming.telstra.com/pd_afl0/OnDemand/%d/ON/iVideo/Premiership/%s/NV_%s_%sV%s_1M.mp4" % (year, round_string, round_string.title(), home_val, away_val)
-				if utils.check_url(video_url_med):
+				if utils.check_url(video_url_med) != 404:
 					video = get_or_new_video(video_url_med)
 					video.name = "%s %s %s v %s" % (round_string.title(), year, home_name, away_name)
 					video.thumbnail = "%sthumb/match-replay.jpg" % (settings.MEDIA_URL) 
@@ -125,7 +125,7 @@ def process_round_data(data):
 
 					# Test for low quality (172k stream)
 					video_low_qual = re.sub("1[mM][bB]{,1}.mp4", "172K.mp4", video_url_med)
-					if utils.check_url(video_low_qual):
+					if utils.check_url(video_low_qual) != 404:
 						print("Found low-res video for %s" % video.name)
 						video.urls.insert(static.QUAL_LOW, video_low_qual)
 					else:
@@ -136,13 +136,13 @@ def process_round_data(data):
 
 					# Test for high quality (2Mb stream)
 					video_high_qual = re.sub("1[mM][bB]{,1}.mp4", "2M.mp4", video_url_med)
-					if utils.check_url(video_high_qual):
+					if utils.check_url(video_high_qual) != 404:
 						print("Found high-res video for %s" % video.name)
 						video.urls.insert(static.QUAL_HIGH, video_high_qual)
 					else:
 						video.urls.insert(static.QUAL_HIGH, None)
 
-					video = utils.tag_video(video, 'replay')
+					video = utils.tag_video(video, 'replay',)
 					print("Saving video: %s" % video)
 					video.save()
 
@@ -152,7 +152,7 @@ def process_round_data(data):
 				for i, qtr in enumerate(['1st','2nd','3rd','4th']):
 					video_url_med = "http://bptvpd.ngcdn.telstra.com/pd_afl0/OnDemand/%d/ON/iVideo/Premiership/%s/AFL%s_%s_%s_vs_%s_%s_qr_full_1M.mp4" % (year, round_string, short_year, round_short.lower(), home_id, away_id, qtr)
 
-					if utils.check_url(video_url_med):
+					if utils.check_url(video_url_med) != 404:
 						video = get_or_new_video(video_url_med)
 
 						if final:
@@ -166,7 +166,7 @@ def process_round_data(data):
 
 						# Test for low quality (172k stream)
 						video_low_qual = re.sub("1[mM][bB]{,1}.mp4", "172K.mp4", video_url_med)
-						if utils.check_url(video_low_qual):
+						if utils.check_url(video_low_qual) != 404:
 							print("Found low-res video for %s" % video.name)
 							video.urls.insert(static.QUAL_LOW, video_low_qual)
 
@@ -175,7 +175,7 @@ def process_round_data(data):
 
 						# Test for high quality (2Mb stream)
 						video_high_qual = re.sub("1[mM][bB]{,1}.mp4", "2M.mp4", video_url_med)
-						if utils.check_url(video_high_qual):
+						if utils.check_url(video_high_qual) != 404:
 							print("Found high-res video for %s" % video.name)
 							video.urls.insert(static.QUAL_HIGH, video_high_qual)
 
@@ -188,6 +188,7 @@ def process_round_data(data):
 			match.videos = match_videos
 			print("Saving match: %s" % match.get_title())
 			r = match.save()
+
 		except Exception, e:
 			logging.exception("Failed to parse match")
 

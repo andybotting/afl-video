@@ -36,27 +36,32 @@ class Match(models.Model):
 			round = "Round %d" % self.round
 		return round
 
-	def get_title(self):
-		season = self.get_season()
-		round = self.get_round()
+	def get_teams(self):
 		for team in static.TEAMS:
 			if self.hometeam == team['id']:
 				hometeam = team['name']
 			if self.awayteam == team['id']:
 				awayteam = team['name']
+		return "%s v %s" % (hometeam, awayteam)	
 
-		return "%s %s %s v %s" % (season, round, hometeam, awayteam)	
+	def get_title(self):
+		season = self.get_season()
+		round = self.get_round()
+		return "%s %s %s " % (season, round, self.get_teams())	
 
 	def get_thumb_name(self):
-		return ("replay_%s_%s" % (self.hometeam, self.awayteam))
+		return ("replay_%s_%s.png" % (self.hometeam, self.awayteam))
 
 	def json(self):
 		return {	
-				'name': self.title, 
+				'id': self.pk,
+				'name': self.get_title(), 
 				'videos': self.videos, 
-				'thumbnail': self.thumbnail, 
+				'thumbnail': self.get_thumb_name(), 
 				'date': self.date.strftime("%Y-%m-%d"), 
-				'type':self.type
+				'type': self.type,
+				'season': self.get_season(),
+				'round': self.get_round(), 
 			}
 
 

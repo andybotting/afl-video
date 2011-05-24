@@ -1,1 +1,5 @@
 *.pyc
+*.pyo
+*~
+*.swp
+/website/.gaedata
