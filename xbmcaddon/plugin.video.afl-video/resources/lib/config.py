@@ -9,6 +9,11 @@ VIDEOS_URL = SERVER + "/video/"
 MATCHES_URL = SERVER + '/matches/?output=json'
 MATCH_URL = SERVER + "/video/match/%s/?output=json"
 
+# Video quality
+QUAL_LOW = 0
+QUAL_MED = 1
+QUAL_HIGH = 2
+
 TEAMS = [
 		{  'name': 'Adelaide',            'id': 'adel' },
 		{  'name': 'Brisbane',            'id': 'bl' },

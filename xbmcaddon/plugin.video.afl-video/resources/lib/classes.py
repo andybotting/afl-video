@@ -65,13 +65,12 @@ class Video(object):
 	def __init__(self):
 		self.id = -1
 		self.title = ''
-		self.episode_title = ""
-		self.description = ''
-		self.duration = ''
-		self.category = 'Unknown'
+		self.category = 'Sport'
 		self.keywords = []
 		self.rating = 'PG'
-		self.duration = '00:00'
+		self.description = None
+		self.duration = None
+		self.season = None
 		self.date = datetime.datetime.now()
 		self.thumbnail = ''
 		self.urls = []
@@ -126,41 +125,36 @@ class Video(object):
 			expression from the orginal title, unless its not available,
 			then a 0 will be returned.
 		"""
-		season = re.search('Series (?P<season>\d+)', self.get_title())
-		if season is None:
+		if self.season is None:
 			return self.get_year()
-		return int(season.group('season'))
-
-	def get_episode(self):
-		""" Return an integer of the Episode, discovered by a regular
-			expression from the orginal title, unless its not available,
-			then a 0 will be returned.
-		"""
-		episode = re.search('Episode (?P<episode>\d+)', self.get_title())
-		if episode is None:
-			return 0
-		return int(episode.group('episode'))
+		return int(self.season)
 
 	def get_url(self):
-		quality =  int(__addon__.getSetting('quality'))
-		return self.urls[quality]
+		""" Return the URL for the video. If the requested quality is
+			not available, then we give the default, which is medium.
+		"""
+		quality = int(__addon__.getSetting('quality'))
+		url = self.urls[quality]
+		if url is None:
+			url = self.urls[config.QUAL_MED]
+		return url
 
 
 	def get_xbmc_list_item(self):
 		""" Returns a dict of program information, in the format which
 			XBMC requires for video metadata.
 		"""
-		info_dict = {	'tvshowtitle': self.get_title(),
-						'title': self.get_title(),
+		info_dict = {	'title': self.get_title(),
 						'genre': self.get_category(),
-						'plot': self.get_description(),
-						'plotoutline': self.get_description(),
-						'duration': self.get_duration(),
 						'year': self.get_year(),
 						'aired': self.get_date(),
-						'season': self.get_season(),
-						'episode': self.get_episode(),
-						'mpaa': self.get_rating(), }
+						'season': self.get_season(), }
+
+		if self.duration: 
+			info_dict['duration'] = self.get_duration()
+		
+		if self.description:
+			info_dict['plot'] = self.get_description()
 
 		return info_dict
 
