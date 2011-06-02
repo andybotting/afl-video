@@ -8,7 +8,6 @@
 			<div id="video-thumb">
 				<a href="{{ video.urls.1 }}"><img src="{{ video.thumbnail }}" width="326" height="184"></a>
 			</div>
-			<img alt="" src="image_browser_overlay.png" id="image-browser-overlay">	
 		</div>
 	
 		 <div id="col2">
@@ -20,7 +19,7 @@
 				<ul id="video-list">
 					{% if video.urls.0 != None %}<li><a title="Low (172k)"   href="{{ video.urls.0 }}">Low (172k)</a></li>{% endif %}
 					<li><a title="Medium (1Mb)" href="{{ video.urls.1 }}">Medium (1Mb)</a></li>
-					{% if video.urls.3 != None %}<li><a title="High (2Mb)"   href="{{ video.urls.2 }}">High (2Mb)</a></li>{% endif %}
+					{% if video.urls.2 != None %}<li><a title="High (2Mb)"   href="{{ video.urls.2 }}">High (2Mb)</a></li>{% endif %}
 				</ul>
 	
 				<p id="video-date">
