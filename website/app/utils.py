@@ -22,13 +22,29 @@ from djangoappengine.utils import on_production_server
 URL = "http://www.afl.com.au/ajax.aspx?feed=VideoSearch&videoTabId=%s&videoSubTabId=%s&mid=131673&page=%s"
 
 FEEDS = [	
-		{ 'name': 'Match Replays', 'video_id': '616:617', 'tag': 'replay' },
-		{ 'name': 'News Desk',	  'video_id': '616:618', 'tag': 'news' },
-		{ 'name': 'Highlights',	 'video_id': '616:619', 'tag': 'highlights' },
-		{ 'name': 'Panel Shows',	'video_id': '616:620', 'tag': 'panel' },
+		{ 'video_id': '616:617', 'tags': {'type': 'replay'} },
+		{ 'video_id': '616:618', 'tags': {'type': 'news'} },
+		{ 'video_id': '616:619', 'tags': {'type': 'highlights'} },
+		{ 'video_id': '616:620', 'tags': {'type': 'panel'} },
+		# Club videos
+		{ 'video_id': '651:0',   'tags': {'type': 'club', 'team': 'geel'} },
 	]
 
-		#{ 'name': 'Club Video',	 'url': 'http://www.afl.com.au/ajax.aspx?feed=VideoSearch&videoTabId=616&videoSubTabId=621&mid=131673', 'tags': ['club'] },
+
+def tags_to_string(tags):
+	tag_strings = []
+	for k,v in tags.items():
+		tag_strings.append("%s:%s" % (k,v))
+	return ",".join(tag_strings)
+
+
+def string_to_tags(string):
+	tags = {}
+	tag_strings = string.split(",")
+	for tag in tag_strings:
+		k,v = tag.split(":")
+		tags[k] = v
+	return tags
 
 
 def check_url(url):
@@ -63,7 +79,7 @@ def update_videos_job():
 	for feed in FEEDS:
 		for page in range(1,11):
 			
-			data = "%s_%s_%s" % (feed['tag'], feed['video_id'], page)
+			data = "%s_%s_%s" % (feed['video_id'], page, tags_to_string(feed['tags']))
 
 			if on_production_server:
 				# Build our task url with secret key
@@ -73,12 +89,7 @@ def update_videos_job():
 			else:
 				# For debugging only
 				logging.info("Fetching page %s" % data)
-				process_page(feed['tag'], feed['video_id'], page)
-
-	# Club Video - needs work
-	#for team in static.TEAMS:
-	#  for stream in team['video_id']:
-	#     fetch_pages(team['tags'][:1], stream)
+				process_page(feed['tags'], feed['video_id'], page)
 
 
 def retag_videos_job():
@@ -106,7 +117,7 @@ def fetch_url(url):
 		logging.error("Could not fetch URL: %s\n%s" % (url, sys.exc_info()[:2]))
 
 
-def process_page(tag, video_id, page):
+def process_page(tags, video_id, page):
 	# Split the video_tab_id and video_sub_tabid out
 	video_tab_id, video_subtab_id = video_id.split(":")	
 
@@ -116,10 +127,10 @@ def process_page(tag, video_id, page):
 	data = fetch_url(url)
 	if data:
 		# Return true if parsing is successful
-		return parse_page(data, tag)
+		return parse_page(data, tags)
 
 
-def parse_page(data, type):
+def parse_page(data, tags):
 
 	xml = BeautifulStoneSoup(data)
 	video_items = xml.findAll("div", { "class" : "video-thumb" } )
@@ -190,7 +201,7 @@ def parse_page(data, type):
 			video.date = datetime.datetime.strptime(date_string, '%m/%d/%Y')
 	
 			# Apply tags to our video
-			video = tag_video(video, type)
+			video = tag_video(video, tags)
 		
 			# If no errors..	
 			if video:
@@ -201,16 +212,16 @@ def parse_page(data, type):
 	
 
 
-def tag_video(video, type):
+def tag_video(video, tags):
 	
 	try:
-		video_tags = []
-
 		# Get our base URL
 		video_url = video.urls[static.QUAL_MED]
 
-		# Apply tag for the feed
-		video_tags.append("type:%s" % type)
+		# Assign the initial tags
+		video_tags = []
+		for k,v in tags.items():
+			video_tags.append("%s:%s" % (k,v))
 
 		# Regex for the match replay URLs
 		regex = '.*/(?P<year>\d{4})/ON/iVideo/(?P<game>\w+)/(?P<rnd>\w+)/AFL\d{2}_(?P<round>\w+)_(?P<hometeam>\w+)_vs_(?P<awayteam>\w+)_(?P<qtr>\d)\w{2}_qr.*'

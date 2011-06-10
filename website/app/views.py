@@ -28,10 +28,11 @@ def process_page(request):
 	data = request.path.split('/')[-1]
 
 	# Split that last part up by underscore
-	tag, video_id, page = data.split('_')
+	video_id, page, tags_string = data.split('_')
 
 	# Fetch the page
-	if utils.process_page(tag, video_id, page):
+	tags = utils.string_to_tags(tags_string)
+	if utils.process_page(tags, video_id, page):
 		return HttpResponse("OK\n")
 	else:
 		return HttpResponse("Failed\n")
