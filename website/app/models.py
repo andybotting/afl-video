@@ -94,20 +94,28 @@ class Video(models.Model):
 		if tags.has_key(tag):
 			return tags[tag] 
 
-	def add_tag(k, v):
+	def has_tag(self, tag):
 		tags = self.get_tags()
-		tag_exists = False
-		for tag in tags:
-			# If existing tag
-			if tag.split(':')[0] == k:
-				tag_exists = True
-				tag = "%s:%s" % (k, v)
+		if tags.has_key(tag):
+			return True
+		return False
 
-		if not tag_exists:
-			tag_string = "%s:%s" % (k, v)
-			tags.append(tag_string)
+	def add_tag(self, k, v):
+		new_tags = []
+		tags = self.get_tags()
+		tags[k] = v
 
-		self.tags = tags
+		for l,w in tags.items():
+			if l == 'hometeam':
+				new_tags.append("hometeam:%s" % w)
+				new_tags.append("team:%s" % w)
+			elif l == 'awayteam':
+				new_tags.append("awayteam:%s" % w)
+				new_tags.append("team:%s" % w)
+			else:
+				new_tags.append("%s:%s" % (l, w))
+
+		self.tags = new_tags
 
 	def json(self):
 		return {	

@@ -26,8 +26,10 @@ FEEDS = [
 		{ 'video_id': '616:618', 'tags': {'type': 'news'} },
 		{ 'video_id': '616:619', 'tags': {'type': 'highlights'} },
 		{ 'video_id': '616:620', 'tags': {'type': 'panel'} },
-		# Club videos
-		{ 'video_id': '651:0',   'tags': {'type': 'club', 'team': 'geel'} },
+		# Geelong Club videos
+		{ 'video_id': '191:192', 'tags': {'type': 'club', 'hometeam': 'geel'} },
+		{ 'video_id': '191:193', 'tags': {'type': 'club', 'hometeam': 'geel'} },
+		{ 'video_id': '191:194', 'tags': {'type': 'club', 'hometeam': 'geel'} },
 	]
 
 
@@ -48,12 +50,17 @@ def string_to_tags(string):
 
 
 def check_url(url):
-	code = 0
-	while code == 0:
+	test = 0
+	while test < 3:
 		code = http_test(url)
 		logging.debug("URL %s gave code: %d" % (url, code))
 		if code != 0:
 			return code;
+		else:
+			test = test + 1
+	# Fail
+	logging.error("URL %s failed 3 checks")
+	return 0
 
 def http_test(url):
 	code = 0
@@ -77,7 +84,7 @@ def http_test(url):
 
 def update_videos_job():
 	for feed in FEEDS:
-		for page in range(1,11):
+		for page in range(1,5):
 			
 			data = "%s_%s_%s" % (feed['video_id'], page, tags_to_string(feed['tags']))
 
@@ -100,8 +107,7 @@ def retag_videos_job():
 			video.delete()
 			logging.debug("Video deleted: %s with tags: %s at %s" % (video.name, video.tags, video.urls[static.QUAL_MED]))
 		else:
-			type = video.get_tag('type')
-			video = tag_video(video, type)
+			video = tag_video(video, tags=[])
 			video.save()
 			logging.debug("Video found: %s with tags: %s at %s" % (video.name, video.tags, video.urls[static.QUAL_MED]))
 
@@ -166,22 +172,17 @@ def parse_page(data, tags):
 	
 			# Test for low quality (172k stream)
 			video_low_qual = re.sub("1[mM][bB]{,1}.mp4", "172K.mp4", video_url)
+			video_high_qual = re.sub("1[mM][bB]{,1}.mp4", "2M.mp4", video_url)
 			if check_url(video_low_qual) == 200:
-				logging.debug("Found low-res video for %s" % video.name)
+				logging.debug("Using high and low res video for %s" % video.name)
 				video.urls.insert(static.QUAL_LOW, video_low_qual)
+				video.urls.insert(static.QUAL_HIGH, video_high_qual)
 			else:
 				video.urls.insert(static.QUAL_LOW, None)
+				video.urls.insert(static.QUAL_HIGH, None)
 	
 			# Just blindly insert the medium quality stream
 			video.urls.insert(static.QUAL_MED, video_url)
-	
-			# Test for high quality (2Mb stream)
-			video_high_qual = re.sub("1[mM][bB]{,1}.mp4", "2M.mp4", video_url)
-			if check_url(video_high_qual) == 200:
-				logging.debug("Found high-res video for %s" % video.name)
-				video.urls.insert(static.QUAL_HIGH, video_high_qual)
-			else:
-				video.urls.insert(static.QUAL_HIGH, None)
 	
 			# Lets check to see if a higher res thumbnail is available
 			thumbnail_standard = item.img.get('src')
@@ -190,11 +191,9 @@ def parse_page(data, tags):
 			if check_url(thumbnail_highres) == 200:
 				logging.debug("Found higher-res thumbnail for %s" % video.name)
 				video.thumbnail = thumbnail_highres
-			elif check_url(thumbnail_standard) == 200:
-				logging.debug("Found standard-res thumbnail for %s" % video.name)
-				video.thumbnail = thumbnail_standard
 			else:
-				video.thumbnail = "%sthumb/missing-thumb.jpg" % (settings.MEDIA_URL)
+				logging.debug("Using standard-res thumbnail for %s" % video.name)
+				video.thumbnail = thumbnail_standard
 	
 			# Parse the date
 			date_string = item.nextSibling.nextSibling.string
@@ -219,9 +218,8 @@ def tag_video(video, tags):
 		video_url = video.urls[static.QUAL_MED]
 
 		# Assign the initial tags
-		video_tags = []
 		for k,v in tags.items():
-			video_tags.append("%s:%s" % (k,v))
+			video.add_tag(k, v)
 
 		# Regex for the match replay URLs
 		regex = '.*/(?P<year>\d{4})/ON/iVideo/(?P<game>\w+)/(?P<rnd>\w+)/AFL\d{2}_(?P<round>\w+)_(?P<hometeam>\w+)_vs_(?P<awayteam>\w+)_(?P<qtr>\d)\w{2}_qr.*'
@@ -239,33 +237,32 @@ def tag_video(video, tags):
 			# 'type': 'Premiership',
 			# 'year': '2010'}
 
-			video_tags.append("game:%s" % result['game'].lower())
-			video_tags.append("year:%d" % int(result['year']))
-			video_tags.append("qtr:%d" % int(result['qtr']))
+			video.add_tag("game", result['game'].lower())
+			video.add_tag("year", int(result['year']))
+			video.add_tag("qtr", int(result['qtr']))
 			
 
 			# Extract the round number, if it is a normal round, or else it might be a final
 			rnd_search = re.search('r[n]{,1}[d]{,1}(\d+)', result['round'], flags=re.IGNORECASE)
 			if rnd_search:
 				rnd = rnd_search.groups()[0]
-				video_tags.append("rnd:%d" % int(rnd))	
+				video.add_tag("rnd", int(rnd))
 			else:
-				video_tags.append("rnd:%s" % result['round'].lower())
+				video.add_tag("rnd", result['round'].lower())
 
+			# Tag the home and away teams for match replays
 			for team in static.TEAMS:
 				for tag in team['tags']:
 					if result['hometeam'] == tag:
 						# Only apply the teams first tag. So we don't get bris and bl for brisbane.
-						video_tags.append("hometeam:%s" % team['tags'][0])
-						video_tags.append("team:%s" % team['tags'][0])
+						video.add_tag("hometeam", team['tags'][0])
 					if result['awayteam'] == tag:
-						video_tags.append("awayteam:%s" % team['tags'][0])
-						video_tags.append("team:%s" % team['tags'][0])
+						video.add_tag("awayteam", team['tags'][0])
 
 		else:
 			# Matching all non-replay urls
 
-			# Dirty replace hack to prevent regex matching _ as a word char for teams matching
+			# Dirty replace hack to prevent regex matching underscore as a word char for teams matching
 			hacked_video_url = video_url.replace('_','!')
 
 			# Apply tag for the team
@@ -273,27 +270,35 @@ def tag_video(video, tags):
 				for tag in team['tags']:
 					search = re.search("\W+"+tag+"\W+", hacked_video_url, flags=re.IGNORECASE)
 					if search:
-						video_tags.append("team:%s" % team['tags'][0]) 
+						if not video.has_tag("hometeam"):
+							video.add_tag("hometeam", team['tags'][0]) 
+						else:
+							video.add_tag("awayteam", team['tags'][0]) 
 
-			# Find the year
-			year = None
-			year_search = re.search('20(\d){2}', video_url)
-			if year_search:
-				year = year_search.group()
-				video_tags.append("year:%s" % year)
+			# Find the year from the URL
+			#year = None
+			#year_search = re.search('20(\d){2}', video_url)
+			#if year_search:
+			#	year = year_search.group()
+			#	video.add_tag("year:%s" % year)
+
+			# More reliable way of getting the year
+			year = video.date.year
+			video.add_tag("year", year)
+			
 
 			# Match all rounds, including RND1, RND01, RD01, R1, R01 and in both upper and lower case
 			rnd = None
-			rnd_search = re.search(r"r[n]{,1}[d]{,1}(\d+)", video_url, flags=re.IGNORECASE)
+			rnd_search = re.search(r"ro?u?n?d\s?(\d{1,2})", video_url, flags=re.IGNORECASE)
 			if rnd_search:
 				rnd = rnd_search.groups()[0]
-				video_tags.append("rnd:%d" % int(rnd))
+				video.add_tag("rnd", int(rnd))
 
 			# Match finals weeks
 			finals_rnd_search = re.search('FW(\d)', video_url)
 			if finals_rnd_search:
 				rnd = finals_rnd_search.groups()[0]
-				video_tags.append("rnd:fw%d" % int(rnd))
+				video.add_tag("rnd", "fw%d" % int(rnd))
 
 			# Match the quarter 
 			# Tested: qtrs = ['qr1','QR01','Q1','Q01','Q_1','QR_2']
@@ -302,14 +307,13 @@ def tag_video(video, tags):
 				# Iterate through our qtr matches. Regex has an 'or' so it could be in position [0] or [1]
 				for qtr in qtr_search.groups():
 					if qtr:
-						video_tags.append("qtr:%d" % int(qtr))
+						video.add_tag("qtr", int(qtr))
 
 			# Exclude Foxtel matches
 			foxtel_search = re.search('foxtel', video_url, flags=re.IGNORECASE)
 			if foxtel_search:
-				video_tags.append("game:foxtel")
+				video.add_tag("game", "foxtel")
 		
-		video.tags = video_tags
 		return video
 
 	except:
