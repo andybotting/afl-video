@@ -59,7 +59,7 @@ def check_url(url):
 		else:
 			test = test + 1
 	# Fail
-	logging.error("URL %s failed 3 checks")
+	logging.error("URL %s failed 3 checks" % url)
 	return 0
 
 def http_test(url):
