@@ -5,7 +5,11 @@ import re
 import datetime, time
 from BeautifulSoup import BeautifulStoneSoup
 import classes
-import simplejson
+
+try: 
+	import simplejson as json
+except ImportError: 
+	import json
 
 def fetch_url(url):
 	"""	Simple function that fetches a URL using urllib2.
@@ -18,7 +22,7 @@ def fetch_url(url):
 
 def fetch_videos(url):
 	data = fetch_url(url)
-	index = simplejson.loads(data)
+	index = json.loads(data)
 	videos = []
 
 	for v in index:
@@ -38,7 +42,7 @@ def fetch_videos(url):
 
 def fetch_matches():
 	data = fetch_url(config.MATCHES_URL)
-	index = simplejson.loads(data)
+	index = json.loads(data)
 	matches = []
 
 	for m in index:
