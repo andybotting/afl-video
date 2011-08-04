@@ -19,6 +19,8 @@ from google.appengine.api.urlfetch import DownloadError
 
 from djangoappengine.utils import on_production_server
 
+from pyamf.remoting.client import RemotingService
+
 URL = "http://www.afl.com.au/ajax.aspx?feed=VideoSearch&videoTabId=%s&videoSubTabId=%s&mid=131673&page=%s"
 
 FEEDS = [	
@@ -31,6 +33,20 @@ FEEDS = [
 		{ 'video_id': '191:193', 'tags': {'type': 'club', 'hometeam': 'geel'} },
 		{ 'video_id': '191:194', 'tags': {'type': 'club', 'hometeam': 'geel'} },
 	]
+
+CHANNELS = [
+		{'id':'9',  'name':'Matches',	  'tags': {'type': 'replay'}},
+		{'id':'10', 'name':'Newsdesk',	 'tags': {'type': 'news'}},
+		{'id':'11', 'name':'Highlights',   'tags': {'type': 'highlights'}},
+		{'id':'13', 'name':'Panel Shows',  'tags': {'type': 'panel'}},
+		{'id':'62', 'name':'Geelong TV',   'tags': {'type': 'club', 'hometeam': 'geel'}},
+]
+
+class AEST(datetime.tzinfo):
+	def utcoffset(self, dt):
+		return datetime.timedelta(hours=10)
+	def dst(self, dt):
+		return datetime.timedelta(0)
 
 
 def tags_to_string(tags):
@@ -48,10 +64,19 @@ def string_to_tags(string):
 		tags[k] = v
 	return tags
 
+def hms_to_seconds(string):
+	seconds = None
+	if string:
+		arr = string.split(':')
+		if len(arr) == 3:
+			seconds = (int(arr[0])*60*60) + (int(arr[1])*60) + int(arr[2])
+	return seconds
+
 
 def check_url(url):
 	test = 0
-	while test < 3:
+	attempts = 3
+	while test < attempts:
 		code = http_test(url)
 		logging.debug("URL %s gave code: %d" % (url, code))
 		if code != 0:
@@ -59,7 +84,7 @@ def check_url(url):
 		else:
 			test = test + 1
 	# Fail
-	logging.error("URL %s failed 3 checks" % url)
+	logging.error("URL %s failed %d checks" % (url, attempts))
 	return 0
 
 def http_test(url):
@@ -82,7 +107,142 @@ def http_test(url):
 	return code
 
 
+def get_service_data(service, method, params):
+	logging.debug("Fetching AMF data for: %s" % params)
+	data = None
+	attempts = 3
+	while attempts > 0:
+		data = amf_service(service, method, params)
+		if data:
+			logging.debug("AMF service returned data: %s" % (data))
+			return data
+		else:
+			attempts = attempts - 1
+	logging.error("Failed to fetch data from AMF Service" % params)
+	return None
+
+
+def amf_service(service, method, params):
+	data = None
+	try:
+		srv = getattr(service, method)
+		data = srv(params)
+		if data != False:
+			return data
+	except:
+		logging.exception("AMF service failed for: %s" % params)
+
+
 def update_videos_job():
+	for channel in CHANNELS:
+
+		data = "%s_%s" % (channel['id'], tags_to_string(channel['tags']))
+
+		if on_production_server:
+			# Build our task url with secret key
+			url = "/process_channel_%s/%s" % (settings.SECRET_URL_KEY, data)
+			logging.info("Adding %s to task queue" % data)
+			taskqueue.add(url=url, method="GET")
+		else:
+			# For debugging only
+			logging.info("Fetching page %s" % data)
+			process_channel(channel['id'], channel['tags'])
+
+
+
+def process_channel(channel_id, tags):
+	client = RemotingService('http://afl.bigpondvideo.com/App/AmfPhp/gateway.php')	
+	service = client.getService('Miscellaneous')
+	params = {'navId':channel_id, 'startRecord':'0', 'howMany':'15', 'platformId':'1', 'phpFunction':'getClipList', 'asFunction':'publishClipList'}
+	videos_list = get_service_data(service, 'getClipList', params)
+	for video_item in videos_list[0]['items']:
+		#try:
+		parse_video(video_item['content'], tags)
+		#except:
+		#	logging.error("Error parsing video: %s\n%s" % (video_item['content']['contentId'], sys.exc_info()[:2]))
+
+
+def parse_video(video_item, tags):
+
+	# {'invokeName': u'AFL', 'description': u'A great passage of team play is sealed with a goal', 'stateId': u'3', 'title': u'Wojo finishes with class', 'contentId': u'367011', 'imageUrl': u'20110626152716a_89x50.png', 'channelId': u'1', 'duration': u'00:00:21', 'channelName': u'AFL'}
+
+	video_list = models.Video.objects.filter(video_id=video_item['contentId'])
+	if video_list:
+		video = video_list[0]
+		logging.debug("Found existing video: %s" % (video.name))
+		video_high_qual = video.urls[static.QUAL_HIGH]
+	else:
+		client = RemotingService('http://afl.bigpondvideo.com/App/AmfPhp/gateway.php')
+		service = client.getService('SEOPlayer')
+		video_high_qual = get_service_data(service, 'getMediaURL', {'cid':video_item['contentId']})
+
+		if video_high_qual:
+			# Do we already have this url? If not, make a new video object
+			video_list = models.Video.objects.filter(urls=video_high_qual)
+			if video_list:
+				video = video_list[0]
+				logging.debug("Found existing video: %s" % (video.name))
+			else:
+				video = models.Video()
+				video.date = datetime.datetime.now(AEST())
+			
+	code = check_url(video_high_qual)
+	if code == 404:
+		logging.debug("Video %s is a 404! Deleting..." % video_high_qual)
+		video.delete()
+	else:
+		logging.debug("Video %s is HTTP code: %d" % (video_high_qual, code))
+		# Set the name
+		video.name = video_item['title']
+		video.description = video_item['description']
+		video.video_id = video_item['contentId']
+		video.duration = hms_to_seconds(video_item['duration'])
+
+		# Set the URLs for each quality
+		# Low, Medium and High (0, 1 and 2 respectively)
+		video.urls = []
+
+		# Test for low quality (172k stream)
+		video_low_qual = re.sub("2[mM][bB]{,1}.mp4", "172K.mp4", video_high_qual)
+		video_med_qual = re.sub("2[mM][bB]{,1}.mp4", "1M.mp4", video_high_qual)
+
+		if check_url(video_low_qual) != 404:
+			logging.debug("Using high and low res video for %s" % video.name)
+			video.urls.insert(static.QUAL_LOW, video_low_qual)
+			video.urls.insert(static.QUAL_MED, video_med_qual)
+		else:
+			video.urls.insert(static.QUAL_LOW, None)
+			video.urls.insert(static.QUAL_MED, None)
+
+		# Just blindly insert the medium quality stream
+		video.urls.insert(static.QUAL_HIGH, video_high_qual)
+
+		# Lets check to see if a higher res thumbnail is available
+		thumbnail_standard = "http://bigpondvideo.com/web/images/content/%s" % video_item['imageUrl']
+		thumbnail_highres = thumbnail_standard.replace('89x50.jpg', '326x184.jpg')
+
+		if check_url(thumbnail_highres) == 200:
+			logging.debug("Found higher-res thumbnail for %s" % video.name)
+			video.thumbnail = thumbnail_highres
+		else:
+			logging.debug("Using standard-res thumbnail for %s" % video.name)
+			video.thumbnail = thumbnail_standard
+
+
+		# Apply tags to our video
+		video = tag_video(video, tags)
+
+		# If no errors..	
+		if video:
+			video.save()
+			logging.debug("Video saved: %s with tags: %s at %s" % (video.name, video.tags, video_high_qual))
+		else:
+			logging.error("Video failed: %s" % video)
+
+
+
+
+def update_videos_job_old():
 	for feed in FEEDS:
 		for page in range(1,5):
 			
@@ -123,7 +283,7 @@ def fetch_url(url):
 		logging.error("Could not fetch URL: %s\n%s" % (url, sys.exc_info()[:2]))
 
 
-def process_page(tags, video_id, page):
+def process_page_old(tags, video_id, page):
 	# Split the video_tab_id and video_sub_tabid out
 	video_tab_id, video_subtab_id = video_id.split(":")	
 
@@ -147,42 +307,55 @@ def parse_page(data, tags):
 
 		# Find the name and url bits
 		video_name = item.img.get('alt')
-		video_url = item.a.get('href')
+
+		# Get the URL
+		onclick = item.a.get('onclick')
+		video_id_search = re.search('PlayVideo\(\'(\d+)\',', onclick)
+		if video_id_search:
+			video_id = video_id_search.groups()[0]
+
+			logging.debug("Found Video with ID: %s" % video_id)
+
+			# AMF call to get the URL from the content id.
+			client = RemotingService('http://afl.bigpondvideo.com/App/AmfPhp/gateway.php')
+			amf_service = client.getService('SEOPlayer')
+			video_high_qual = amf_service.getMediaURL({'cid':video_id})
 
 		# Do we already have this url? If not, make a new video object
-		video_list = models.Video.objects.filter(urls=video_url)
+		video_list = models.Video.objects.filter(urls=video_high_qual)
 		if video_list:
 			video = video_list[0]
 			logging.debug("Found existing video: %s" % (video.name))
 		else:
 			video = models.Video()
 			
-		code = check_url(video_url)
+		code = check_url(video_high_qual)
 		if code == 404:
-			logging.debug("Video %s is a 404! Deleting..." % video_url)
+			logging.debug("Video %s is a 404! Deleting..." % video_high_qual)
 			video.delete()
 		else:
-			logging.debug("Video %s is HTTP code: %d" % (video_url, code))
+			logging.debug("Video %s is HTTP code: %d" % (video_high_qual, code))
 			# Set the name
 			video.name = video_name
+			video.video_id = video_id
 	
 			# Set the URLs for each quality
 			# Low, Medium and High (0, 1 and 2 respectively)
 			video.urls = []
 	
 			# Test for low quality (172k stream)
-			video_low_qual = re.sub("1[mM][bB]{,1}.mp4", "172K.mp4", video_url)
-			video_high_qual = re.sub("1[mM][bB]{,1}.mp4", "2M.mp4", video_url)
-			if check_url(video_low_qual) == 200:
+			video_low_qual = re.sub("2[mM][bB]{,1}.mp4", "172K.mp4", video_high_qual)
+			video_med_qual = re.sub("2[mM][bB]{,1}.mp4", "1M.mp4", video_high_qual)
+			if check_url(video_low_qual) != 404:
 				logging.debug("Using high and low res video for %s" % video.name)
 				video.urls.insert(static.QUAL_LOW, video_low_qual)
-				video.urls.insert(static.QUAL_HIGH, video_high_qual)
+				video.urls.insert(static.QUAL_MED, video_med_qual)
 			else:
 				video.urls.insert(static.QUAL_LOW, None)
-				video.urls.insert(static.QUAL_HIGH, None)
+				video.urls.insert(static.QUAL_MED, None)
 	
 			# Just blindly insert the medium quality stream
-			video.urls.insert(static.QUAL_MED, video_url)
+			video.urls.insert(static.QUAL_HIGH, video_high_qual)
 	
 			# Lets check to see if a higher res thumbnail is available
 			thumbnail_standard = item.img.get('src')
@@ -197,7 +370,7 @@ def parse_page(data, tags):
 	
 			# Parse the date
 			date_string = item.nextSibling.nextSibling.string
-			video.date = datetime.datetime.strptime(date_string, '%m/%d/%Y')
+			video.date = datetime.datetime.strptime(date_string, '%d/%m/%Y')
 	
 			# Apply tags to our video
 			video = tag_video(video, tags)
@@ -205,7 +378,7 @@ def parse_page(data, tags):
 			# If no errors..	
 			if video:
 				video.save()
-				logging.debug("Video saved: %s with tags: %s at %s" % (video.name, video.tags, video_url))
+				logging.debug("Video saved: %s with tags: %s at %s" % (video.name, video.tags, video_high_qual))
 			else:
 				logging.error("Video failed: %s" % video)
 	
@@ -215,7 +388,7 @@ def tag_video(video, tags):
 	
 	try:
 		# Get our base URL
-		video_url = video.urls[static.QUAL_MED]
+		video_url = video.urls[static.QUAL_HIGH]
 
 		# Assign the initial tags
 		for k,v in tags.items():

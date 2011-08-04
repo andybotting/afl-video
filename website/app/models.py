@@ -69,9 +69,12 @@ class Match(models.Model):
 
 class Video(models.Model):
 	name = models.CharField(max_length=64)
+	video_id = models.CharField(max_length=8)
 	urls = fields.ListField(models.CharField(max_length=512))
 	thumbnail = models.URLField(verify_exists=True, max_length=256)
+	description = models.CharField(max_length=512, null=True)
 	date = models.DateField()
+	duration = models.IntegerField(null=True)
 	tags = fields.ListField(models.CharField(max_length=16))
 
 	class Admin:

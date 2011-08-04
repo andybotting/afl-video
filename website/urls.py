@@ -15,10 +15,10 @@ urlpatterns = patterns('',
 
 	# Admin tasks I2bmxS2RAfVmt7C3DBeNHh75Ugqfc66xYFc5tT8JYrW53QDq8rYVGADK
 	(r'^update_videos_' + settings.SECRET_URL_KEY + '/', views.update_videos_job),
-	(r'^retag_videos_' + settings.SECRET_URL_KEY + '/', views.retag_videos_job),
-	(r'^process_page_' + settings.SECRET_URL_KEY + '/', views.process_page),
-	(r'^update_rounds_' + settings.SECRET_URL_KEY + '/', views.update_rounds_job),
-	(r'^process_round_' + settings.SECRET_URL_KEY + '/', views.process_round),
+	(r'^process_channel_' + settings.SECRET_URL_KEY + '/', views.process_channel_job),
+#	(r'^retag_videos_' + settings.SECRET_URL_KEY + '/', views.retag_videos_job),
+#	(r'^update_rounds_' + settings.SECRET_URL_KEY + '/', views.update_rounds_job),
+#	(r'^process_round_' + settings.SECRET_URL_KEY + '/', views.process_round),
 
 	# Pages
 	(r'^all/$', views.videos),

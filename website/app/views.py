@@ -14,6 +14,7 @@ from django.http import HttpResponse, Http404
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.conf import settings
+from django.core.paginator import Paginator
 
 from BeautifulSoup import BeautifulStoneSoup
 import simplejson as json
@@ -23,41 +24,41 @@ def update_videos_job(request):
 	utils.update_videos_job()
 	return HttpResponse("OK\n")
 
-def process_page(request):
+def process_channel_job(request):
 	# Strip the last part of the URL
 	data = request.path.split('/')[-1]
 
 	# Split that last part up by underscore
-	video_id, page, tags_string = data.split('_')
+	channel_id, tags_string = data.split('_')
 
 	# Fetch the page
 	tags = utils.string_to_tags(tags_string)
-	if utils.process_page(tags, video_id, page):
+	if utils.process_channel(channel_id, tags):
 		return HttpResponse("OK\n")
 	else:
 		return HttpResponse("Failed\n")
 
-
-def update_rounds_job(request):
-	replay_generator.process_rounds()
-	return HttpResponse("OK\n")
-
-
-def process_round(request):
-	data = request.path.split('/')[-1]
-
-	try:
-		round = int(data)
-	except exceptions.ValueError:
-		raise Http404
-
-	replay_generator.process_round(round)
-	return HttpResponse("OK\n")
-
-
-def retag_videos_job(request):
-	utils.retag_videos_job()
-	return HttpResponse("OK\n")
+#
+#def update_rounds_job(request):
+#	replay_generator.process_rounds()
+#	return HttpResponse("OK\n")
+#
+#
+#def process_round(request):
+#	data = request.path.split('/')[-1]
+#
+#	try:
+#		round = int(data)
+#	except exceptions.ValueError:
+#		raise Http404
+#
+#	replay_generator.process_round(round)
+#	return HttpResponse("OK\n")
+#
+#
+#def retag_videos_job(request):
+#	utils.retag_videos_job()
+#	return HttpResponse("OK\n")
 
 
 def get_thumb(request, size):
@@ -102,6 +103,7 @@ def videos(request):
 	query = []
 	json_output = False
 
+	# Get the variables
 	for k, v in request.GET.iteritems():
 		if (k == 'output') and (v == 'json'):
 			json_output = True

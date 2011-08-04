@@ -135,6 +135,7 @@ class Video(object):
 		"""
 		quality = int(__addon__.getSetting('quality'))
 		url = self.urls[quality]
+		print url
 		if url is None:
 			url = self.urls[config.QUAL_MED]
 		return url

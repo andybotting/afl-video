@@ -45,8 +45,8 @@ def fill_media_list(programs):
 			listitem.setInfo('video', p.get_xbmc_list_item())
 			# Add the program item to the list
 			ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=p.get_url(), listitem=listitem, isFolder=False)
-
-		xbmcplugin.setContent(handle=int(sys.argv[1]), content='episodes')
+			
+		xbmcplugin.setContent(handle=int(sys.argv[1]), content='video')
 	except:
 		# user cancelled dialog or an error occurred
 		print "ERROR: %s (%d) - %s" % ( sys.exc_info()[ 2 ].tb_frame.f_code.co_name, sys.exc_info()[ 2 ].tb_lineno, sys.exc_info()[ 1 ], )
