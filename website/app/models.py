@@ -53,6 +53,7 @@ class Match(models.Model):
 		return ("replay_%s_%s.png" % (self.hometeam, self.awayteam))
 
 	def json(self):
+
 		return {	
 				'id': self.pk,
 				'name': self.get_title(), 
@@ -79,7 +80,7 @@ class Video(models.Model):
 
 	class Admin:
 		list_display   = ('name', 'thumbnail', 'date')
-		ordering       = ('-date',)
+		ordering	   = ('-date',)
 		search_fields  = ('name',)
 
 	def __str__(self):
@@ -121,9 +122,19 @@ class Video(models.Model):
 		self.tags = new_tags
 
 	def json(self):
+
+		urls = {}
+		if self.urls[static.QUAL_LOW]:
+			urls['low'] = self.urls[static.QUAL_LOW]
+		if self.urls[static.QUAL_MED]:
+			urls['med'] = self.urls[static.QUAL_MED]
+		if self.urls[static.QUAL_HIGH]:
+			urls['high'] = self.urls[static.QUAL_HIGH]
+
+
 		return {	
 				'name': self.name, 
-				'urls': self.urls, 
+				'urls': urls, 
 				'thumbnail': self.thumbnail, 
 				'date': self.date.strftime("%Y-%m-%d"), 
 				'tags':self.tags

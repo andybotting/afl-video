@@ -156,10 +156,10 @@ def process_channel(channel_id, tags):
 	params = {'navId':channel_id, 'startRecord':'0', 'howMany':'15', 'platformId':'1', 'phpFunction':'getClipList', 'asFunction':'publishClipList'}
 	videos_list = get_service_data(service, 'getClipList', params)
 	for video_item in videos_list[0]['items']:
-		#try:
-		parse_video(video_item['content'], tags)
-		#except:
-		#	logging.error("Error parsing video: %s\n%s" % (video_item['content']['contentId'], sys.exc_info()[:2]))
+		try:
+			parse_video(video_item['content'], tags)
+		except:
+			logging.error("Error parsing video: %s\n%s" % (video_item['content']['contentId'], sys.exc_info()[:2]))
 
 
 def parse_video(video_item, tags):

@@ -73,7 +73,7 @@ class Video(object):
 		self.season = None
 		self.date = datetime.datetime.now()
 		self.thumbnail = ''
-		self.urls = []
+		self.urls = {}
 
 	def __repr__(self):
 		return self.title
@@ -134,11 +134,14 @@ class Video(object):
 			not available, then we give the default, which is medium.
 		"""
 		quality = int(__addon__.getSetting('quality'))
-		url = self.urls[quality]
-		print url
-		if url is None:
-			url = self.urls[config.QUAL_MED]
-		return url
+		if quality == 0: qual_code = 'low'
+		if quality == 1: qual_code = 'med'
+		if quality == 2: qual_code = 'high'
+
+		if self.urls.has_key(qual_code):
+			return self.urls[qual_code]
+		else:
+			return self.urls.values()[0]
 
 
 	def get_xbmc_list_item(self):
