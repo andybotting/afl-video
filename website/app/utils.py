@@ -35,11 +35,11 @@ FEEDS = [
 	]
 
 CHANNELS = [
+		{'id':'62', 'name':'Geelong TV',   'tags': {'type': 'club', 'hometeam': 'geel'}},
 		{'id':'9',  'name':'Matches',	  'tags': {'type': 'replay'}},
 		{'id':'10', 'name':'Newsdesk',	 'tags': {'type': 'news'}},
 		{'id':'11', 'name':'Highlights',   'tags': {'type': 'highlights'}},
 		{'id':'13', 'name':'Panel Shows',  'tags': {'type': 'panel'}},
-		{'id':'62', 'name':'Geelong TV',   'tags': {'type': 'club', 'hometeam': 'geel'}},
 ]
 
 class AEST(datetime.tzinfo):
@@ -76,13 +76,14 @@ def hms_to_seconds(string):
 def check_url(url):
 	test = 0
 	attempts = 3
-	while test < attempts:
-		code = http_test(url)
-		logging.debug("URL %s gave code: %d" % (url, code))
-		if code != 0:
-			return code;
-		else:
-			test = test + 1
+	if url:
+		while test < attempts:
+			code = http_test(url)
+			logging.debug("URL %s gave code: %d" % (url, code))
+			if code != 0:
+				return code;
+			else:
+				test = test + 1
 	# Fail
 	logging.error("URL %s failed %d checks" % (url, attempts))
 	return 0
@@ -118,7 +119,7 @@ def get_service_data(service, method, params):
 			return data
 		else:
 			attempts = attempts - 1
-	logging.error("Failed to fetch data from AMF Service" % params)
+	logging.error("Failed to fetch data from AMF Service: %s" % params)
 	return None
 
 
@@ -155,11 +156,12 @@ def process_channel(channel_id, tags):
 	service = client.getService('Miscellaneous')
 	params = {'navId':channel_id, 'startRecord':'0', 'howMany':'15', 'platformId':'1', 'phpFunction':'getClipList', 'asFunction':'publishClipList'}
 	videos_list = get_service_data(service, 'getClipList', params)
-	for video_item in videos_list[0]['items']:
-		try:
-			parse_video(video_item['content'], tags)
-		except:
-			logging.error("Error parsing video: %s\n%s" % (video_item['content']['contentId'], sys.exc_info()[:2]))
+	if videos_list:
+		for video_item in videos_list[0]['items']:
+			try:
+				parse_video(video_item['content'], tags)
+			except:
+				logging.error("Error parsing video: %s\n%s" % (video_item['content']['contentId'], sys.exc_info()[:2]))
 
 
 def parse_video(video_item, tags):
